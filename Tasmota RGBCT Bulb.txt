@@ -16,8 +16,11 @@ metadata {
 		capability "ColorControl"
         capability "ColorTemperature"
 		capability "Light"
-		capability "Switch"
 		capability "SwitchLevel"
+        capability "ColorMode"
+        capability "Refresh"
+		
+		attribute "colorName", "string"
         
         command "white"
         command "ModeNext"
@@ -104,7 +107,7 @@ def setColorTemperature(value)
 		sendEvent(name: "colorName", value: "Warm White")
         sendCommand("CT", "500")
 	} else {
-        sendEvent(name: "Temp", value: value)
+        //sendEvent(name: "Temp", value: value)
         if (value < 2600) {
             sendEvent(name: "colorName", value: "Warm White")
         }
@@ -161,7 +164,7 @@ def setHsb(h,s,b)
     sendEvent(name: "saturation", value: "${s}")
     sendEvent(name: "level", value: "${b}")
 	if (hsbcmd == "0,0,100") {
-        state.colorMode = "white"
+        state.colorMode = "CT"
         sendEvent(name: "colorMode", value: "CT")
         white()
         }
@@ -214,11 +217,11 @@ def white() {
     sendEvent(name: "hue", value: "0")
     sendEvent(name: "saturation", value: "100")
     sendEvent(name: "level", value: "100")
-	sendEvent(name: "colorMode", value: "white")
+	sendEvent(name: "colorMode", value: "CT")
     state.hue = state.hue
 	state.saturation = state.saturation
 	state.level = state.level
-    state.colorMode = "white"
+    state.colorMode = "CT"
     def lvl = state.level
     if (lvl < 1) {
         lvl = 1
@@ -332,3 +335,10 @@ private String convertPortToHex(port) {
 	String hexport = port.toString().format('%04x', port.toInteger())
 	return hexport
 }
+
+
+def refresh() {
+
+    
+}
+
