@@ -9,25 +9,25 @@ metadata {
 	definition(name: "Govee Immersion LED Strip", namespace: "Obi2000", author: "Obi2000") {
 		capability "Switch"
 		capability "ColorControl"
-        capability "ColorTemperature"
+		capability "ColorTemperature"
 		capability "Light"
 		capability "SwitchLevel"
-        capability "ColorMode"
-        capability "Refresh"
+		capability "ColorMode"
+		capability "Refresh"
 		
 		attribute "colorName", "string"
         
-//        command "white"
-//        command "ModeMusic"
-//        command "ModeVideo"
-//          command "DeviceInfo"
+//		command "white"
+//		command "ModeMusic"
+//		command "ModeVideo"
+//		command "DeviceInfo"
         
     }
 
 	preferences {		
 		section("Device Info") {
 			input(name: "Model", type: "string", title: "Device Model Number", displayDuringSetup: true, required: true)
-            input(name: "APIKey", type: "string", title: "User API Key", displayDuringSetup: true, required: true)
+			input(name: "APIKey", type: "string", title: "User API Key", displayDuringSetup: true, required: true)
 			input(name: "MACAddr", type: "string", title: "Device Mac address", displayDuringSetup: true, required: true)
 		}
 		
@@ -39,12 +39,12 @@ def parse(String description) {
 }
 
 def on() {
-    sendEvent(name: "switch", value: "on")
+	sendEvent(name: "switch", value: "on")
 	sendCommand("turn", "on")
 }
 
 def off() {
-    sendEvent(name: "switch", value: "off")
+	sendEvent(name: "switch", value: "off")
 	sendCommand("turn", "off")
 }
 
@@ -64,7 +64,7 @@ def setColorTemperature(value)
 
 def setCTColorName(value)
 {
-	    if (value < 2600) {
+		if (value < 2600) {
             sendEvent(name: "colorName", value: "Warm White")
         }
         else if (value < 3500) {
@@ -89,11 +89,11 @@ def setCTColorName(value)
     
 def setColor(value) {
 	log.debug "HSBColor = "+ value
-	   if (value instanceof Map) {
-        def h = value.containsKey("hue") ? value.hue : null
-        def s = value.containsKey("saturation") ? value.saturation : null
-        def b = value.containsKey("level") ? value.level : null
-    	setHsb(h, s, b)
+	if (value instanceof Map) {
+		def h = value.containsKey("hue") ? value.hue : null
+		def s = value.containsKey("saturation") ? value.saturation : null
+		def b = value.containsKey("level") ? value.level : null
+		setHsb(h, s, b)
     } else {
         log.warn "Invalid argument for setColor: ${value}"
     }
@@ -105,8 +105,8 @@ def setHsb(h,s,b)
 	hsbcmd = [h,s,b]
 //	log.debug "Cmd = ${hsbcmd}"
 
-    sendEvent(name: "hue", value: "${h}")
-    sendEvent(name: "saturation", value: "${s}")
+	sendEvent(name: "hue", value: "${h}")
+	sendEvent(name: "saturation", value: "${s}")
 	if(b!= device.currentValue("level")?.toInteger()){
 		sendEvent(name: "level", value: "${b}")
 		setLevel(b)
@@ -135,7 +135,7 @@ def setSaturation(s)
 
 def setLevel(v)
 {
-	    sendEvent(name: "level", value: v)
+		sendEvent(name: "level", value: v)
         sendCommand("brightness", v)
 }
 
@@ -172,12 +172,12 @@ def white() {
 
 
 def getDeviceSupport(){
-	     def params = [
-            uri   : "https://developer-api.govee.com",
-            path  : '/v1/devices',
+	    def params = [
+			uri   : "https://developer-api.govee.com",
+			path  : '/v1/devices',
 			headers: ["Govee-API-Key": settings.APIKey, "Content-Type": "application/json"],
 			query: [device: settings.MACAddr, model: settings.Model],
-        ]
+		]
     
 
 
@@ -186,7 +186,6 @@ try {
 			httpGet(params) { resp ->
 
 				state.hasRetrievable = resp.data.data.devices.find({it.device==settings.MACAddr}).retrievable
-
 
 				return resp.data
 			}
@@ -233,9 +232,9 @@ try {
 
 def getDeviceState(){
 	
-	     def params = [
-            uri   : "https://developer-api.govee.com",
-            path  : '/v1/devices/state',
+		def params = [
+			uri   : "https://developer-api.govee.com",
+			path  : '/v1/devices/state',
 			headers: ["Govee-API-Key": settings.APIKey, "Content-Type": "application/json"],
 			query: [device: settings.MACAddr, model: settings.Model],
         ]
@@ -246,11 +245,11 @@ try {
 
 			httpGet(params) { resp ->
 
-			    log.debug resp.data.data.properties
+				log.debug resp.data.data.properties
 				varPower = resp.data.data.properties.find({it.powerState})?.powerState
-                varBrightness = resp.data.data.properties.find({it.brightness})?.brightness
-                mapColor = resp.data.data.properties.find({it.color})?.color                
-                varCT = resp.data.data.properties.find({it.colorTemInKelvin})?.colorTemInKelvin
+				varBrightness = resp.data.data.properties.find({it.brightness})?.brightness
+				mapColor = resp.data.data.properties.find({it.color})?.color                
+				varCT = resp.data.data.properties.find({it.colorTemInKelvin})?.colorTemInKelvin
 
                 
 				sendEvent(name: "switch", value: varPower)
@@ -258,22 +257,22 @@ try {
 
                 if(varCT){
 					sendEvent(name: "colorTemperature", value: varCT)
-                    sendEvent(name: "colorMode", value: "CT")
+					sendEvent(name: "colorMode", value: "CT")
 					setCTColorName(varCT)					
                 }
                 
 				if(mapColor){
-                    r=mapColor.r
-                    g=mapColor.g
-                    b=mapColor.b
-                    HSVlst=hubitat.helper.ColorUtils.rgbToHSV([r,g,b])
-                    hue=HSVlst[0].toInteger()
-                    sat=HSVlst[1].toInteger()
-                    sendEvent(name: "hue", value: hue)
-                    sendEvent(name: "saturation", value: sat)
-                    sendEvent(name: "colorMode", value: "RGB")
+					r=mapColor.r
+					g=mapColor.g
+					b=mapColor.b
+					HSVlst=hubitat.helper.ColorUtils.rgbToHSV([r,g,b])
+					hue=HSVlst[0].toInteger()
+					sat=HSVlst[1].toInteger()
+					sendEvent(name: "hue", value: hue)
+					sendEvent(name: "saturation", value: sat)
+					sendEvent(name: "colorMode", value: "RGB")
 				
-                }
+				}
 				
 				return resp.data
 			}
