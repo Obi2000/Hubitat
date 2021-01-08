@@ -1,6 +1,9 @@
 
 // Hubitat driver for Govee RGB Strips using Cloud API
-// Version 1.0.0
+// Version 1.0.3
+//
+// 2021-01-07 - Improved robustness of recalling device state
+//				Fixed error with inital hue/sat commands if no data returned from server
 
 metadata {
 	definition(name: "Govee Immersion LED Strip", namespace: "Obi2000", author: "Obi2000") {
@@ -98,14 +101,13 @@ def setColor(value) {
 
 def setHsb(h,s,b)
 {
-	log.debug("setHSB - ${h},${s},${b}")
 
 	hsbcmd = [h,s,b]
-	log.debug "Cmd = ${hsbcmd}"
+//	log.debug "Cmd = ${hsbcmd}"
 
     sendEvent(name: "hue", value: "${h}")
     sendEvent(name: "saturation", value: "${s}")
-	if(b!= device.currentValue("level").toInteger()){
+	if(b!= device.currentValue("level")?.toInteger()){
 		sendEvent(name: "level", value: "${b}")
 		setLevel(b)
 	}
@@ -123,12 +125,12 @@ def setHsb(h,s,b)
 
 def setHue(h)
 {
-    setHsb(h,device.currentValue( "saturation" ),device.currentValue("level"))
+    setHsb(h,device.currentValue( "saturation" )?:100,device.currentValue("level")?:100)
 }
 
 def setSaturation(s)
 {
-	setHsb(device.currentValue("hue"),s,device.currentValue("level"))
+	setHsb(device.currentValue("hue")?:0,s,device.currentValue("level")?:100)
 }
 
 def setLevel(v)
@@ -161,14 +163,41 @@ def white() {
 //			}
 //			
 //	} catch (groovyx.net.http.HttpResponseException e) {
-//		log.error "callURL() >>>>>>>>>>>>>>>> ERROR >>>>>>>>>>>>>>>>"
 //		log.error "Error: e.statusCode ${e.statusCode}"
 //		log.error "${e}"
-//		log.error "callURL() <<<<<<<<<<<<<<<< ERROR <<<<<<<<<<<<<<<<"
 //		
 //		return 'unknown'
 //	}    
 //}
+
+
+def getDeviceSupport(){
+	     def params = [
+            uri   : "https://developer-api.govee.com",
+            path  : '/v1/devices',
+			headers: ["Govee-API-Key": settings.APIKey, "Content-Type": "application/json"],
+			query: [device: settings.MACAddr, model: settings.Model],
+        ]
+    
+
+
+try {
+
+			httpGet(params) { resp ->
+
+				state.hasRetrievable = resp.data.data.devices.find({it.device==settings.MACAddr}).retrievable
+
+
+				return resp.data
+			}
+			
+	} catch (groovyx.net.http.HttpResponseException e) {
+		log.error "Error: e.statusCode ${e.statusCode}"
+		log.error "${e}"
+		
+		return 'unknown'
+	}
+}
 
 
 
@@ -194,10 +223,8 @@ try {
 		
 		}
 	} catch (groovyx.net.http.HttpResponseException e) {
-		log.error "callURL() >>>>>>>>>>>>>>>> ERROR >>>>>>>>>>>>>>>>"
 		log.error "Error: e.statusCode ${e.statusCode}"
 		log.error "${e}"
-		log.error "callURL() <<<<<<<<<<<<<<<< ERROR <<<<<<<<<<<<<<<<"
 		
 		return 'unknown'
 	}
@@ -219,27 +246,32 @@ try {
 
 			httpGet(params) { resp ->
 
-			
-				log.debug resp.data.data.properties
-                
-                sendEvent(name: "switch", value: resp.data.data.properties[1].powerState)
-                sendEvent(name: "level", value: resp.data.data.properties[2].brightness)
+			    log.debug resp.data.data.properties
+				varPower = resp.data.data.properties.find({it.powerState})?.powerState
+                varBrightness = resp.data.data.properties.find({it.brightness})?.brightness
+                mapColor = resp.data.data.properties.find({it.color})?.color                
+                varCT = resp.data.data.properties.find({it.colorTemInKelvin})?.colorTemInKelvin
 
-                if(resp.data.data.properties[3].containsKey("colorTemInKelvin")){
-					ct = resp.data.data.properties[3].colorTemInKelvin
-					sendEvent(name: "colorTemperature", value: ct)
-					setCTColorName(ct)					
+                
+				sendEvent(name: "switch", value: varPower)
+                sendEvent(name: "level", value: varBrightness)
+
+                if(varCT){
+					sendEvent(name: "colorTemperature", value: varCT)
+                    sendEvent(name: "colorMode", value: "CT")
+					setCTColorName(varCT)					
                 }
                 
-				if(resp.data.data.properties[3].containsKey("color")){
-                    r=resp.data.data.properties[3].color.r
-                    g=resp.data.data.properties[3].color.g
-                    b=resp.data.data.properties[3].color.b
+				if(mapColor){
+                    r=mapColor.r
+                    g=mapColor.g
+                    b=mapColor.b
                     HSVlst=hubitat.helper.ColorUtils.rgbToHSV([r,g,b])
                     hue=HSVlst[0].toInteger()
                     sat=HSVlst[1].toInteger()
                     sendEvent(name: "hue", value: hue)
                     sendEvent(name: "saturation", value: sat)
+                    sendEvent(name: "colorMode", value: "RGB")
 				
                 }
 				
@@ -247,10 +279,8 @@ try {
 			}
 			
 	} catch (groovyx.net.http.HttpResponseException e) {
-		log.error "callURL() >>>>>>>>>>>>>>>> ERROR >>>>>>>>>>>>>>>>"
 		log.error "Error: e.statusCode ${e.statusCode}"
 		log.error "${e}"
-		log.error "callURL() <<<<<<<<<<<<<<<< ERROR <<<<<<<<<<<<<<<<"
 		
 		return 'unknown'
 	}
@@ -261,9 +291,18 @@ def poll() {
 }
 
 def refresh() {
-    getDeviceState()
+    if(state.hasRetrievable){
+        getDeviceState()
+    }
 }
 
 def updated() {
+    getDeviceSupport()
     refresh()
+}
+
+def installed(){
+    sendEvent(name: "hue", value: 0)
+    sendEvent(name: "saturation", value: 100)
+    sendEvent(name: "level", value: 100)   
 }
