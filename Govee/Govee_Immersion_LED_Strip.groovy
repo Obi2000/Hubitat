@@ -1,9 +1,10 @@
-
 // Hubitat driver for Govee RGB Strips using Cloud API
-// Version 1.0.3
+// Version 1.0.4
 //
-// 2021-01-07 - Improved robustness of recalling device state
+// 2021-01-07 -	Improved robustness of recalling device state
 //				Fixed error with inital hue/sat commands if no data returned from server
+// 2021-01-11 - Added option to use a 0-254 brightness range expected by some strips
+
 
 metadata {
 	definition(name: "Govee Immersion LED Strip", namespace: "Obi2000", author: "Obi2000") {
@@ -29,6 +30,7 @@ metadata {
 			input(name: "Model", type: "string", title: "Device Model Number", displayDuringSetup: true, required: true)
 			input(name: "APIKey", type: "string", title: "User API Key", displayDuringSetup: true, required: true)
 			input(name: "MACAddr", type: "string", title: "Device Mac address", displayDuringSetup: true, required: true)
+			input(name: "aRngBright", type: "bool", title: "Alternate Brightness Range", description: "For devices that expect a brightness range of 0-254", defaultValue: false)
 		}
 		
 	}
@@ -54,7 +56,7 @@ def setColorTemperature(value)
 	log.debug "ColorTemp = " + value
 	def intvalue = value.toInteger()
 	
-    sendEvent(name: "colorTemperature", value: intvalue)
+	sendEvent(name: "colorTemperature", value: intvalue)
     
 		sendCommand("colorTem", intvalue)
 		setCTColorName(intvalue)
@@ -65,20 +67,20 @@ def setColorTemperature(value)
 def setCTColorName(value)
 {
 		if (value < 2600) {
-            sendEvent(name: "colorName", value: "Warm White")
-        }
-        else if (value < 3500) {
-            sendEvent(name: "colorName", value: "Incandescent")
-        }
-        else if (value < 4500) {
-            sendEvent(name: "colorName", value: "White")
-        }
-        else if (value < 5500) {
-            sendEvent(name: "colorName", value: "Daylight")
-        }
-        else if (value >=  5500) {
-            sendEvent(name: "colorName", value: "Cool White")
-        }
+			sendEvent(name: "colorName", value: "Warm White")
+		}
+		else if (value < 3500) {
+			sendEvent(name: "colorName", value: "Incandescent")
+		}
+		else if (value < 4500) {
+			sendEvent(name: "colorName", value: "White")
+		}
+		else if (value < 5500) {
+			sendEvent(name: "colorName", value: "Daylight")
+		}
+		else if (value >=  5500) {
+			sendEvent(name: "colorName", value: "Cool White")
+		}
 	
 }
 
@@ -94,8 +96,8 @@ def setColor(value) {
 		def s = value.containsKey("saturation") ? value.saturation : null
 		def b = value.containsKey("level") ? value.level : null
 		setHsb(h, s, b)
-    } else {
-        log.warn "Invalid argument for setColor: ${value}"
+	} else {
+		log.warn "Invalid argument for setColor: ${value}"
     }
 }
 
@@ -112,14 +114,14 @@ def setHsb(h,s,b)
 		setLevel(b)
 	}
 	rgb = hubitat.helper.ColorUtils.hsvToRGB(hsbcmd)
-    def rgbmap = [:]
-    rgbmap.r = rgb[0]
-    rgbmap.g = rgb[1]
-    rgbmap.b = rgb[2]   
+	def rgbmap = [:]
+	rgbmap.r = rgb[0]
+	rgbmap.g = rgb[1]
+	rgbmap.b = rgb[2]   
     
  
-        sendEvent(name: "colorMode", value: "RGB")
-        sendCommand("color", rgbmap)
+		sendEvent(name: "colorMode", value: "RGB")
+		sendCommand("color", rgbmap)
     
 }
 
@@ -136,8 +138,28 @@ def setSaturation(s)
 def setLevel(v)
 {
 		sendEvent(name: "level", value: v)
-        sendCommand("brightness", v)
+		if(aRngBright){v=incBrightnessRange(v)}
+//		log.debug "Sent Brightness = ${v}"
+		sendCommand("brightness", v)
 }
+
+
+//Turn Hubitat's 0-100 Brightness range to the 0-254 expected by some devices
+def incBrightnessRange(v)
+{
+	v=v*(254/100)
+	return Math.round(v)
+}
+
+
+//Go from 0-254 brightness range from some devices to Hubitat's 0-100 Brightness range. Maybe not needed?
+def decBrightnessRange(v)
+{
+	v=v*(100/254)
+	return Math.round(v)
+}
+
+
 
 
 def white() {
@@ -251,10 +273,17 @@ try {
 				mapColor = resp.data.data.properties.find({it.color})?.color                
 				varCT = resp.data.data.properties.find({it.colorTemInKelvin})?.colorTemInKelvin
 
-                
+                //if(aRngBright){varBrightness=decBrightnessRange(varBrightness)}
+				//log.debug "Recvd Brightness = ${varBrightness}"
+				
 				sendEvent(name: "switch", value: varPower)
-                sendEvent(name: "level", value: varBrightness)
-
+				
+				
+				if(varBrightness){
+					sendEvent(name: "level", value: varBrightness)
+				}
+				
+				
                 if(varCT){
 					sendEvent(name: "colorTemperature", value: varCT)
 					sendEvent(name: "colorMode", value: "CT")
