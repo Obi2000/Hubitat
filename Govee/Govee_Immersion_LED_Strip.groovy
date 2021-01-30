@@ -1,5 +1,5 @@
 // Hubitat driver for Govee RGB Strips using Cloud API
-// Version 1.0.4
+// Version 1.0.5
 //
 // 2021-01-07 -	Improved robustness of recalling device state
 //				Fixed error with inital hue/sat commands if no data returned from server
@@ -133,6 +133,10 @@ def setHue(h)
 def setSaturation(s)
 {
 	setHsb(device.currentValue("hue")?:0,s,device.currentValue("level")?:100)
+}
+
+def setLevel(v,duration){
+    setLevel(v)
 }
 
 def setLevel(v)
