@@ -1,10 +1,10 @@
 // Hubitat driver for Govee RGB Strips using Cloud API
-// Version 1.0.5
+// Version 1.1.0
 //
 // 2021-01-07 -	Improved robustness of recalling device state
 //				Fixed error with inital hue/sat commands if no data returned from server
 // 2021-01-11 - Added option to use a 0-254 brightness range expected by some strips
-
+// 2021-02-11 - API Key Alone generates device list, Then auto sets to your preferences last device in list
 
 metadata {
 	definition(name: "Govee Immersion LED Strip", namespace: "Obi2000", author: "Obi2000") {
@@ -27,9 +27,9 @@ metadata {
 
 	preferences {		
 		section("Device Info") {
-			input(name: "Model", type: "string", title: "Device Model Number", displayDuringSetup: true, required: true)
 			input(name: "APIKey", type: "string", title: "User API Key", displayDuringSetup: true, required: true)
-			input(name: "MACAddr", type: "string", title: "Device Mac address", displayDuringSetup: true, required: true)
+			input(name: "Model", type: "string", title: "Device Model Number", displayDuringSetup: true, required: false)
+			input(name: "MACAddr", type: "string", title: "Device Mac address", displayDuringSetup: true, required: false)
 			input(name: "aRngBright", type: "bool", title: "Alternate Brightness Range", description: "For devices that expect a brightness range of 0-254", defaultValue: false)
 		}
 		
@@ -171,30 +171,48 @@ def white() {
 }
 
 
-//def DeviceInfo(){
-//	     def params = [
-//            uri   : "https://developer-api.govee.com",
-//            path  : '/v1/devices',
-//			headers: ["Govee-API-Key": settings.APIKey, "Content-Type": "application/json"],
-//        ]
-//    
-//
-//
-//try {
-//
-//			httpGet(params) { resp ->
-//
-//				log.debug resp.data
-//				return resp.data
-//			}
-//			
-//	} catch (groovyx.net.http.HttpResponseException e) {
-//		log.error "Error: e.statusCode ${e.statusCode}"
-//		log.error "${e}"
-//		
-//		return 'unknown'
-//	}    
-//}
+def DeviceInfo(){
+log.debug "DEVICE INFORMATION"
+	     def params = [
+            uri   : "https://developer-api.govee.com",
+            path  : '/v1/devices',
+			headers: ["Govee-API-Key": settings.APIKey, "Content-Type": "application/json"],
+        ]
+    
+
+
+try {
+
+			httpGet(params) { resp ->
+
+				//List each device assigned to current API key
+				//log.debug resp.data
+				resp.data.data.devices.each{
+					deviceID = it.device
+					deviceModel = it.model
+					deviceName = it.deviceName
+					log.debug "$deviceName	Address: $deviceID		Model: $deviceModel"
+				}
+
+				//Save the last device to preferences
+				curDeviceID = resp.data.data.devices.last().device
+				curDeviceModel = resp.data.data.devices.last().model
+
+				device.updateSetting("Model",[value:curDeviceModel, type:"text"])
+				device.updateSetting("MACAddr",[value:curDeviceID, type:"text"])
+
+				runIn(2, 'setupDevice')
+				return resp.data
+			}
+			
+	} catch (groovyx.net.http.HttpResponseException e) {
+		log.error "Error: e.statusCode ${e.statusCode}"
+		log.error "${e}"
+		
+		return 'unknown'
+	}    
+}
+
 
 
 def getDeviceSupport(){
@@ -329,8 +347,20 @@ def refresh() {
 }
 
 def updated() {
-    getDeviceSupport()
-    refresh()
+//get devices or get specific device info
+if(!settings.MACAddr || !settings.Model)
+	{
+		DeviceInfo()
+	}
+	else{
+		setupDevice()
+	}
+
+}
+
+def setupDevice(){
+		getDeviceSupport()
+		refresh()
 }
 
 def installed(){
