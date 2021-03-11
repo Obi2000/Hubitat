@@ -2,7 +2,7 @@
 //Tasmota HttpHook Driver for Treatlife Fan and Dimmer (DS03)
 //By Obi2000
 //
-//2.0.2
+//2.0.3 - Fix for Mirror App
 
 
 metadata {
@@ -38,11 +38,11 @@ def parse(String description) {
 
 
 	if (tasdata.containsKey("POWER1")) {
-		cdFan.parse([[name:"switch", value:"$tasdata.POWER1", descriptionText:"Fan $tasdata.POWER1"]])
+        cdFan.parse([[name:"switch", value:"${tasdata.POWER1.toLowerCase()}", descriptionText:"Fan $tasdata.POWER1"]])
     }  
 
 	if (tasdata.containsKey("POWER2")) {
-		cdDim.parse([[name:"switch", value:"$tasdata.POWER2", descriptionText:"Dimmer $tasdata.POWER2"]])
+        cdDim.parse([[name:"switch", value:"${tasdata.POWER2.toLowerCase()}", descriptionText:"Dimmer ${tasdata.POWER2}"]])
     }
 	
 	if (tasdata.containsKey("Dimmer")) {
