@@ -2,7 +2,7 @@
 //Tasmota HttpHook Driver for Treatlife Fan and Dimmer (DS03)
 //By Obi2000
 //
-//2.0.3 - Fix for Mirror App
+//2.0.5 - Dimmer rate limiter for mirroring to groups
 
 
 metadata {
@@ -17,6 +17,7 @@ metadata {
 		section("Switch Info") {
             input(name: "ipAddress", type: "string", title: "IP Address", displayDuringSetup: true, required: true)
 			input(name: "port", type: "number", title: "Port", displayDuringSetup: true, required: true, defaultValue: 80)
+            input(name: "rateLimit", type: "number", title: "Dimmer Rate Limit", displayDuringSetup: true, required: true, defaultValue: 500)
 		}
 	}
 }
@@ -46,7 +47,12 @@ def parse(String description) {
     }
 	
 	if (tasdata.containsKey("Dimmer")) {
-		cdDim.parse([[name:"level", value:"$tasdata.Dimmer", descriptionText:"Dimmer $tasdata.Dimmer"]])
+        runInMillis(2000,delayDimEvt,[data:tasdata.Dimmer])     //Catch last dim event if skipped
+		Long timeNow = now();
+		if ((timeNow - state.timeStamp) > rateLimit){
+		    cdDim.parse([[name:"level", value:"$tasdata.Dimmer", descriptionText:"Dimmer $tasdata.Dimmer"]])
+			state.timeStamp = timeNow as Long;
+			}
     }
 	
 	if (tasdata.containsKey("TuyaEnum4")) {
@@ -64,6 +70,10 @@ def parse(String description) {
 
 }
 
+def delayDimEvt(Dimmer){
+    def cdDim=getChildDevice("$device.id-Dim1")
+    cdDim.parse([[name:"level", value:"$Dimmer", descriptionText:"Dimmer $Dimmer"]])
+}
 
 //turn all children on
 def on() {
@@ -182,7 +192,7 @@ createChildDevices()
 def updated() {
 state.dni=convertIPtoHex(ipAddress)
 device.deviceNetworkId = state.dni
-
+state.timeStamp = now() as Long;
 refresh()
 }
 
@@ -273,11 +283,13 @@ def componentSetLevel(cd,v,d){
 	if (cd.deviceNetworkId == "${device.id}-Fan1"){setSpeedLvl(v)} 	
 }
 
+//Dimmer >
 void componentStartLevelChange(cd,dir){
 	if(dir=="up"){setLevel(100)}
 	if(dir=="down"){setLevel(0)}
 }
 
+//Dimmer !
 void componentStopLevelChange(cd){
 
 }
