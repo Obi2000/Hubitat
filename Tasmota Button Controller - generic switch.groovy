@@ -4,8 +4,8 @@
 //
 //use rule to tie buttons to relays
 //
-//1.0.5
-
+//1.0.5 - Initial Release
+//1.0.6 - Add commands for Hubitat 2.2.6
 
 metadata {
 	definition(name: "Tasmota Button Controller Generic Switch", namespace: "Obi2000", author: "Obi2000") {
@@ -15,6 +15,9 @@ metadata {
 		capability "DoubleTapableButton"
 		capability "HoldableButton"
 		
+		command "push", ["NUMBER"]
+		command "doubleTap", ["NUMBER"]
+		command "hold", ["NUMBER"]
 		//command "recreateChildDevices"
     }
 
@@ -302,5 +305,20 @@ def componentOff(cd){
 def recreateChildDevices(){
 	createChildDevices()
 }
+
+
+
+def push(button=1){
+	sendEvent(name: "pushed", value: button, isStateChange: true )
+}
+
+def doubleTap(button=1){
+	sendEvent(name: "doubleTapped", value: button, isStateChange: true )
+}
+
+def hold(button=1){
+	sendEvent(name: "held", value: button, isStateChange: true )
+}
+
 
 
