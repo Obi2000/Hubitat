@@ -1,10 +1,11 @@
 // Hubitat driver for Govee RGB Strips using Cloud API
-// Version 1.1.0
+// Version 1.1.1
 //
 // 2021-01-07 -	Improved robustness of recalling device state
 //				Fixed error with inital hue/sat commands if no data returned from server
 // 2021-01-11 - Added option to use a 0-254 brightness range expected by some strips
 // 2021-02-11 - API Key Alone generates device list, Then auto sets to your preferences last device in list
+// 2021-03-29 - Added setColorTemperature(k,l,d) command for Hubitat 2.2.6, bug fixes in state reporting
 
 metadata {
 	definition(name: "Govee Immersion LED Strip", namespace: "Obi2000", author: "Obi2000") {
@@ -17,6 +18,8 @@ metadata {
 		capability "Refresh"
 		
 		attribute "colorName", "string"
+        
+        command "setColorTemperature", [[name:"Color temperature*", type:"NUMBER", description:"Color temperature in degrees Kelvin", constraints:["NUMBER"]]]
         
 //		command "white"
 //		command "ModeMusic"
@@ -50,16 +53,22 @@ def off() {
 	sendCommand("turn", "off")
 }
 
-def setColorTemperature(value)
+def setColorTemperature(value,level=null,dur=null)
 {
+if(value>9000){value=9000}
+if(value<2000){value=2000}
 	sendEvent(name: "colorMode", value: "CT")
-	log.debug "ColorTemp = " + value
+	//log.debug "ColorTemp = " + value
 	def intvalue = value.toInteger()
-	
+	sendEvent(name: "switch", value: "on")	
 	sendEvent(name: "colorTemperature", value: intvalue)
     
-		sendCommand("colorTem", intvalue)
-		setCTColorName(intvalue)
+	sendCommand("colorTem", intvalue)
+	setCTColorName(intvalue)
+		
+	if(level!=null){
+		setLevel(level,dur)
+	}
 }   
 
 
@@ -119,7 +128,7 @@ def setHsb(h,s,b)
 	rgbmap.g = rgb[1]
 	rgbmap.b = rgb[2]   
     
- 
+		sendEvent(name: "switch", value: "on")
 		sendEvent(name: "colorMode", value: "RGB")
 		sendCommand("color", rgbmap)
     
@@ -141,7 +150,14 @@ def setLevel(v,duration){
 
 def setLevel(v)
 {
-		sendEvent(name: "level", value: v)
+		if(v>0){
+			sendEvent(name: "switch", value: "on")
+			sendEvent(name: "level", value: v)
+		}
+		else{
+			sendEvent(name: "switch", value: "off")		
+		}
+		
 		if(aRngBright){v=incBrightnessRange(v)}
 //		log.debug "Sent Brightness = ${v}"
 		sendCommand("brightness", v)
