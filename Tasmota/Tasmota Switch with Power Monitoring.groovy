@@ -42,9 +42,7 @@ def parse(String description) {
     if(tasdata.containsKey("StatusSNS")) {tasdata=tasdata.StatusSNS}
     
 	if(tasdata.containsKey("ENERGY")) {
-		if(tasdata.ENERGY.containsKey("Power")){
-		
-		}
+
 		//sendEvent(name: "power", value: power)
 		//sendEvent(name: "amperage", value: power)
 		//sendEvent(name: "voltage", value: power)
