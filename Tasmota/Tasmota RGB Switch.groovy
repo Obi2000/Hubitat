@@ -7,7 +7,7 @@
 //so1	1  disable inadvertent reset due to hold
 //use rule to tie buttons to relays
 //
-//1.0.0
+//1.0.1
 
 
 metadata {
@@ -71,7 +71,7 @@ def parse(String description) {
 
         hue=HSBColor[0]
 		sat=HSBColor[1]
-		bri=HSBColor[2]
+		bri=HSBColor[2].intValue()
 		cdLt.parse([[name:"colorMode", value:"RGB"]])
 		cdLt.parse([[name:"hue", value:"${hue}"]])
 		cdLt.parse([[name:"saturation", value:"${sat}"]])
@@ -124,9 +124,10 @@ def parse(String description) {
     }  
     
 
-	
+
+    
 	if (tasdata.containsKey("Dimmer")) {
-		cdLt.parse([[name:"level", value:"$tasdata.Dimmer", descriptionText:"Dimmer $tasdata.Dimmer"]])
+		cdLt.parse([[name:"level", value:tasdata.Dimmer, descriptionText:"Dimmer $tasdata.Dimmer"]])
 	}
 	
 
