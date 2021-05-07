@@ -1,9 +1,9 @@
-//Tasmota HttpHook Driver for RGB Light Switch
+//Tasmota HttpHook Driver for RGBCT Bulb
 //By Obi2000
 //
 
 //
-//1.0.0
+//1.0.1
 
 
 metadata {
@@ -79,7 +79,7 @@ def parse(String description) {
 
 			hue=HSBColor[0]
 			sat=HSBColor[1]
-			bri=HSBColor[2]
+			bri=HSBColor[2].intValue()
 			sendEvent(name:"colorMode", value:"RGB")
 			sendEvent(name:"hue", value:"${hue}")
 			sendEvent(name:"saturation", value:"${sat}")
@@ -103,7 +103,7 @@ def parse(String description) {
 
 	
 	if (tasdata.containsKey("Dimmer")) {
-		sendEvent(name:"level", value:"$tasdata.Dimmer", descriptionText:"Dimmer $tasdata.Dimmer")
+		sendEvent(name:"level", value:tasdata.Dimmer, descriptionText:"Dimmer $tasdata.Dimmer")
 	}
 	
 
