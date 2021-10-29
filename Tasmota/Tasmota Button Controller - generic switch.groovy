@@ -2,13 +2,10 @@
 //Tasmota HttpHook Driver for Button Control on Switches
 //By Obi2000
 //
-//so73  1  decouple relay & enable buttons
-//so32  8  time to hold(0.1s) default 40
-//so1	1  disable inadvertent reset due to hold
 //use rule to tie buttons to relays
 //
-//1.0.5
-
+//1.0.5 - Initial Release
+//1.0.6 - Add commands for Hubitat 2.2.6
 
 metadata {
 	definition(name: "Tasmota Button Controller Generic Switch", namespace: "Obi2000", author: "Obi2000") {
@@ -18,6 +15,9 @@ metadata {
 		capability "DoubleTapableButton"
 		capability "HoldableButton"
 		
+		command "push", ["NUMBER"]
+		command "doubleTap", ["NUMBER"]
+		command "hold", ["NUMBER"]
 		//command "recreateChildDevices"
     }
 
@@ -25,7 +25,7 @@ metadata {
 		section("Switch Info") {
             input(name: "ipAddress", type: "string", title: "IP Address", displayDuringSetup: true, required: true)
 			input(name: "port", type: "number", title: "Port", displayDuringSetup: true, required: true, defaultValue: 80)
-            input(name: "numButtons", type: "number", title: "Number of Buttons", displayDuringSetup: true, required: true, defaultValue: 1)
+            input(name: "numButtons", type: "number", title: "Number of buttons", displayDuringSetup: true, required: true, defaultValue: 1)
             input(name: "so73", type: "bool", title: "so73 - Decouple Relays/Enable Buttons", displayDuringSetup: true, required: true, defaultValue: true)
             input(name: "so32", type: "number", title: "so32 - Time to trigger hold(0.1s), Warning reset due to hold is 10x this value", displayDuringSetup: true)
             input(name: "so1", type: "bool", title: "so1 - Disable reset due to hold", displayDuringSetup: true)
@@ -152,7 +152,7 @@ def upStr = "BACKLOG"
     upStr += "%20so73%20${so73}"
     if(so1!=null){upStr += "%3Bso1%20${so1}"}  //;so1 true
     if(so32!=null){upStr += "%3Bso32%20${so32}"}  //;so32 8
-log.debug upStr
+//log.debug upStr
 sendCommand(upStr)
 
     
@@ -193,7 +193,8 @@ try {
                     
                     if (curCD == null) {
                         addChildDevice("hubitat", "Generic Component Switch", cdDNI, [name: "${device.displayName}-Switch${cdNum}",isComponent: false])
-                        log.info "Child Switch${cdNum} added"   
+                        log.info "Child Switch${cdNum} added"
+                        getChildDevice(cdDNI).updateSetting("txtEnable",[value:false, type:"bool"])
                     }               
                 }
                 
@@ -305,5 +306,20 @@ def componentOff(cd){
 def recreateChildDevices(){
 	createChildDevices()
 }
+
+
+
+def push(button=1){
+	sendEvent(name: "pushed", value: button, isStateChange: true )
+}
+
+def doubleTap(button=1){
+	sendEvent(name: "doubleTapped", value: button, isStateChange: true )
+}
+
+def hold(button=1){
+	sendEvent(name: "held", value: button, isStateChange: true )
+}
+
 
 
