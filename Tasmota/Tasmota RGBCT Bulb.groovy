@@ -3,7 +3,7 @@
 //
 
 //
-//1.0.1
+//1.0.2 - Pre-staging support
 
 
 metadata {
@@ -23,6 +23,7 @@ metadata {
 		section("Switch Info") {
             input(name: "ipAddress", type: "string", title: "IP Address", displayDuringSetup: true, required: true)
 			input(name: "port", type: "number", title: "Port", displayDuringSetup: true, required: true, defaultValue: 80)
+			input(name: "so20", type: "bool", title: "so20 - Light Pre-staging", displayDuringSetup: true)
 		}
 	}
 }
@@ -147,6 +148,11 @@ def installed() {
 def updated() {
 	state.dni=convertIPtoHex(ipAddress)
 	device.deviceNetworkId = state.dni
+
+    if(so20!=null){
+		upStr = "so20%20${so20}"
+		sendCommand(upStr)
+		}  //;so20 prestaging
 
 	refresh()
 }
