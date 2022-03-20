@@ -112,7 +112,11 @@ def setColor(value) {
 
 def setHsb(h,s,b)
 {
-
+	if(!b){
+		currentLevel = device.currentValue("level")?.toInteger()
+		log.debug "No level specified; using current level: ${currentLevel}"
+		b = currentLevel
+    	}
 	hsbcmd = [h,s,b]
 //	log.debug "Cmd = ${hsbcmd}"
 
